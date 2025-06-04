@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Palavra Maldita</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <div id="telaNome">
+    <h1>Palavra Maldita</h1>
+    <div id="entrada">
+      <input type="text" id="nomeInput" placeholder="Digite seu nome" autocomplete="off" />
+      <small id="alertaBox"></small>
+      <button id="entrarNomeBtn" disabled>Avançar</button>
+    </div>
+  </div>
+
+  <div id="telaSalas" style="display: none; margin: 10px;">
+    <h2>Salas Disponíveis</h2>
+    <p>Jogador: <strong><span id="nomeJogador"></span></strong></p>
+    <div id="listaSalas" class="lista-salas"></div>
+    <button id="criarSalaBtn" class="botao-criar">Criar Nova Sala</button>
+  </div>
+
+  <div id="jogo" style="display: none;">
+    <div class="container">
+      <div class="chat-area">
+        <div id="chatBox" class="box"></div>
+        <input type="text" id="mensagemInput" placeholder="Enviar mensagem" />
+        <button id="enviarMensagemBtn">Enviar</button>
+
+        <hr />
+
+        <input type="text" id="adivinharInput" placeholder="Tentar adivinhar a palavra" />
+        <button id="tentarBtn">Tentar</button>
+
+        <div id="dicaBox" class="dica"></div>
+      </div>
+      <div class="ranking-area">
+        <h3>Ranking</h3>
+        <ul id="rankingLista"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

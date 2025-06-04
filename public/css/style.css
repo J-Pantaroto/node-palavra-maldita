@@ -1,0 +1,187 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f2f2f2;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3 {
+  color: #2c3e50;
+  text-align: center;
+}
+
+#telaNome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10vh;
+}
+
+#telaNome input {
+  padding: 10px;
+  font-size: 16px;
+  width: 300px;
+  margin: 10px 0;
+}
+
+#telaNome button {
+  padding: 10px 20px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#alertaBox {
+  height: 1em;
+  font-size: 14px;
+  color: #c0392b;
+  margin-top: -8px;
+}
+
+#telaSalas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8vh;
+}
+
+#telaSalas h2 {
+  margin-bottom: 10px;
+}
+
+.lista-salas {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.sala-card {
+  background-color: #ffffff;
+  border: 1px solid #ccc;
+  padding: 15px 25px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  width: 360px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.sala-card:hover {
+  transform: translateY(-3px);
+}
+
+.sala-info {
+  font-size: 16px;
+  color: #2c3e50;
+}
+
+.sala-card button {
+  padding: 6px 14px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sala-card button:hover {
+  background-color: #2980b9;
+}
+
+#criarSalaBtn, .botao-criar {
+  margin-top: 25px;
+  padding: 10px 20px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#criarSalaBtn:hover {
+  background-color: #229954;
+}
+
+.container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+}
+
+.chat-area {
+  width: 70%;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.ranking-area {
+  width: 25%;
+  background-color: #ecf0f1;
+  padding: 20px;
+  border-radius: 10px;
+}
+
+.box {
+  height: 300px;
+  overflow-y: auto;
+  border: 1px solid #ccc;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #fdfdfd;
+}
+
+.chat-area input[type="text"] {
+  width: 80%;
+  padding: 8px;
+  margin-bottom: 5px;
+}
+
+.chat-area button {
+  padding: 8px 12px;
+  margin-left: 5px;
+  background-color: #2980b9;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.dica {
+  background-color: #fff8e1;
+  color: #8e44ad;
+  padding: 10px;
+  margin-top: 10px;
+  border-left: 5px solid #f39c12;
+  font-weight: bold;
+}
+
+.alerta {
+  background-color: #ffe6e6;
+  color: #c0392b;
+  padding: 10px;
+  margin-top: 10px;
+  border-left: 5px solid #e74c3c;
+  font-weight: bold;
+}
+
+#rankingLista {
+  list-style: none;
+  padding-left: 0;
+}
+
+#rankingLista li {
+  padding: 5px 0;
+  font-weight: bold;
+  border-bottom: 1px dashed #aaa;
+}
