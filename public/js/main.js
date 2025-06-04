@@ -1,169 +1,157 @@
 const socket = io();
 
 let nomeJogador = '';
-let salaSelecionada = '';
-let eliminado = false;
+let salaId = '';
 
 const nomeInput = document.getElementById('nomeInput');
-const entrarBtn = document.getElementById('entrarNomeBtn');
+const entrarNomeBtn = document.getElementById('entrarNomeBtn');
 const alertaBox = document.getElementById('alertaBox');
 
 const telaNome = document.getElementById('telaNome');
 const telaSalas = document.getElementById('telaSalas');
 const telaJogo = document.getElementById('jogo');
+const nomeJogadorSpan = document.getElementById('nomeJogador');
 
 const listaSalas = document.getElementById('listaSalas');
 const criarSalaBtn = document.getElementById('criarSalaBtn');
 
-const nomeSpan = document.getElementById('nomeJogador');
 const chatBox = document.getElementById('chatBox');
-const rankingLista = document.getElementById('rankingLista');
+const mensagemInput = document.getElementById('mensagemInput');
+const enviarMensagemBtn = document.getElementById('enviarMensagemBtn');
+
+const adivinharInput = document.getElementById('adivinharInput');
+const tentarBtn = document.getElementById('tentarBtn');
+
 const dicaBox = document.getElementById('dicaBox');
-const tentativasBox = document.createElement('div');
-const vitoriasBox = document.createElement('div');
-const rodadaBox = document.createElement('div');
+const rankingLista = document.getElementById('rankingLista');
 
-chatBox.parentElement.insertBefore(rodadaBox, chatBox);
-chatBox.parentElement.insertBefore(vitoriasBox, chatBox);
-chatBox.parentElement.insertBefore(tentativasBox, chatBox);
-
-// Valida nome
 nomeInput.addEventListener('input', async () => {
-  const nome = nomeInput.value.trim();
-  if (nome.length < 3) {
-    entrarBtn.disabled = true;
-    alertaBox.innerText = 'Digite um nome válido';
+  const nome = nomeInput.value.trim().toLowerCase();
+  if (!nome) {
+    alertaBox.textContent = '';
+    entrarNomeBtn.disabled = true;
     return;
   }
 
-  const res = await fetch(`/validar-nome?nome=${encodeURIComponent(nome)}`);
+  const res = await fetch(`/validar-nome?nome=${nome}`);
   const data = await res.json();
-  if (!data.valido) {
-    alertaBox.innerText = 'Nome já está em uso';
-    entrarBtn.disabled = true;
+  if (data.valido) {
+    alertaBox.textContent = '';
+    entrarNomeBtn.disabled = false;
   } else {
-    alertaBox.innerText = '';
-    entrarBtn.disabled = false;
+    alertaBox.textContent = 'Nome já está em uso!';
+    entrarNomeBtn.disabled = true;
   }
 });
 
-entrarBtn.addEventListener('click', () => {
+entrarNomeBtn.addEventListener('click', () => {
   nomeJogador = nomeInput.value.trim();
-  nomeSpan.innerText = nomeJogador;
-  socket.emit('listarSalas');
+  if (!nomeJogador) return;
+
   telaNome.style.display = 'none';
   telaSalas.style.display = 'flex';
+  nomeJogadorSpan.textContent = nomeJogador;
+  socket.emit('listarSalas');
 });
 
 criarSalaBtn.addEventListener('click', () => {
   socket.emit('criarSala', nomeJogador);
-  iniciarJogo();
+  telaSalas.style.display = 'none';
+  telaJogo.style.display = 'block';
 });
 
 socket.on('salasDisponiveis', salas => {
   listaSalas.innerHTML = '';
-  salas.forEach(sala => {
-    const card = document.createElement('div');
-    card.className = 'sala-card';
-
-    const info = document.createElement('div');
-    info.className = 'sala-info';
-    info.innerHTML = `<strong>${sala.nome}</strong><br>${sala.jogadores} jogador(es)`;
-
-    const botao = document.createElement('button');
-    botao.textContent = 'Entrar';
-    botao.onclick = () => {
-      socket.emit('entrarSala', { salaId: sala.id, nome: nomeJogador });
-      iniciarJogo();
-    };
-
-    card.appendChild(info);
-    card.appendChild(botao);
-    listaSalas.appendChild(card);
+  salas.forEach(s => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span>${s.nome} (${s.jogadores} jogadores)</span>
+      <button onclick="entrarSala('${s.id}')">Entrar</button>
+    `;
+    listaSalas.appendChild(li);
   });
 });
 
-function iniciarJogo() {
+window.entrarSala = function (id) {
+  salaId = id;
+  socket.emit('entrarSala', { salaId: id, nome: nomeJogador });
   telaSalas.style.display = 'none';
   telaJogo.style.display = 'block';
-}
+};
 
-document.getElementById('enviarMensagemBtn').addEventListener('click', () => {
-  if (eliminado) return;
-  const msg = document.getElementById('mensagemInput').value.trim();
+enviarMensagemBtn.addEventListener('click', () => {
+  const msg = mensagemInput.value.trim();
   if (msg) {
     socket.emit('enviarMensagem', msg);
-    document.getElementById('mensagemInput').value = '';
+    mensagemInput.value = '';
   }
 });
 
-document.getElementById('tentarBtn').addEventListener('click', () => {
-  if (eliminado) return;
-  const tentativa = document.getElementById('adivinharInput').value.trim();
+socket.on('mensagem', ({ nome, texto }) => {
+  const div = document.createElement('div');
+  div.innerHTML = `<strong>${nome}:</strong> ${texto}`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+socket.on('mensagemPrivada', texto => {
+  const div = document.createElement('div');
+  div.classList.add('dica');
+  div.innerHTML = `<strong>Sistema:</strong> ${texto}`;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+tentarBtn.addEventListener('click', () => {
+  const tentativa = adivinharInput.value.trim();
   if (tentativa) {
     socket.emit('tentarPalavra', tentativa);
-    document.getElementById('adivinharInput').value = '';
+    adivinharInput.value = '';
   }
 });
 
-socket.on('novaRodada', dados => {
-  eliminado = false;
-  rodadaBox.innerHTML = `<div class="dica"><svg height="14" width="14"><circle cx="7" cy="7" r="6" fill="#2980b9"/></svg> Rodada: <strong>${dados.rodada}</strong></div>`;
-  dicaBox.innerHTML = '';
-  setTimeout(() => {
-    dicaBox.innerHTML += `<div class="dica">${dados.dicas[0]}</div>`;
-  }, 1000);
-  setTimeout(() => {
-    dicaBox.innerHTML += `<div class="dica">${dados.dicas[1]}</div>`;
-  }, 3000);
-  setTimeout(() => {
-    dicaBox.innerHTML += `<div class="dica">${dados.dicas[2]}</div>`;
-  }, 5000);
-});
-
-// Atualizar ranking
-socket.on('atualizarRanking', lista => {
+socket.on('atualizarRanking', ranking => {
   rankingLista.innerHTML = '';
-  const jogador = lista.find(j => j.nome === nomeJogador);
-  if (jogador) {
-    vitoriasBox.innerHTML = `<div class="dica"><svg height="14" width="14"><circle cx="7" cy="7" r="6" fill="#27ae60"/></svg> Vitórias: <strong>${jogador.vitorias}</strong></div>`;
-    tentativasBox.innerHTML = `<div class="alerta"><svg height="14" width="14"><circle cx="7" cy="7" r="6" fill="#e74c3c"/></svg> Tentativas: <strong>${jogador.tentativas}</strong></div>`;
-  }
-  lista.forEach(j => {
+  ranking.forEach(j => {
     const li = document.createElement('li');
-    li.textContent = `${j.nome} - ${j.vitorias} vitórias`;
-    if (j.eliminado) li.style.opacity = 0.5;
+    const status = j.eliminado ? 'N' : 'S';
+    li.textContent = `${j.nome} - ${j.vitorias} vitórias, ${j.tentativas} tentativas ${status}`;
     rankingLista.appendChild(li);
   });
 });
 
-socket.on('mensagem', ({ nome, texto }) => {
-  const msg = document.createElement('div');
-  msg.innerHTML = `<strong>${nome}:</strong> ${texto}`;
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
+// Rodada
+socket.on('novaRodada', ({ rodada, categoria }) => {
+  chatBox.innerHTML = '';
+  dicaBox.innerHTML = `Rodada ${rodada} - Categoria: <strong>${categoria}</strong>`;
+  rankingLista.innerHTML = '';
+  mensagemInput.disabled = false;
+  adivinharInput.disabled = false;
+  enviarMensagemBtn.disabled = false;
+  tentarBtn.disabled = false;
 });
 
-socket.on('mensagemPrivada', msg => {
-  const alerta = document.createElement('div');
-  alerta.className = 'alerta';
-  alerta.innerHTML = `<svg height="14" width="14"><circle cx="7" cy="7" r="6" fill="#f39c12"/></svg> ${msg}`;
-  chatBox.appendChild(alerta);
+// Dica
+socket.on('novaDica', dica => {
+  const novaLinha = document.createElement('div');
+  novaLinha.classList.add('dica');
+  novaLinha.innerHTML = dica;
+  dicaBox.appendChild(novaLinha);
 });
 
 socket.on('eliminado', msg => {
-  eliminado = true;
   const alerta = document.createElement('div');
-  alerta.className = 'alerta';
-  alerta.innerHTML = `<svg height="14" width="14"><circle cx="7" cy="7" r="6" fill="#c0392b"/></svg> ${msg}`;
+  alerta.classList.add('alerta');
+  alerta.textContent = msg;
   chatBox.appendChild(alerta);
-  document.getElementById('mensagemInput').disabled = true;
-  document.getElementById('adivinharInput').disabled = true;
+  chatBox.scrollTop = chatBox.scrollHeight;
+
+  mensagemInput.disabled = true;
+  adivinharInput.disabled = true;
+  enviarMensagemBtn.disabled = true;
+  tentarBtn.disabled = true;
 });
 
 socket.on('erro', msg => {
-  alertaBox.innerText = msg;
-  telaNome.style.display = 'flex';
-  telaSalas.style.display = 'none';
-  telaJogo.style.display = 'none';
+  alertaBox.textContent = msg;
 });

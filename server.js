@@ -15,7 +15,6 @@ app.get('/', (req, res) => {
 });
 
 let jogadoresGlobais = {};
-
 let salas = {};
 let palavrasPorCategoria = {
   animais: ['jacaré', 'tigre', 'cachorro'],
@@ -66,6 +65,7 @@ io.on('connection', socket => {
       socket.emit('erro', 'Nome já está em uso.');
       return;
     }
+
     const salaId = `sala_${Math.random().toString(36).substr(2, 5)}`;
     jogadoresGlobais[nomeJogador] = socket.id;
 
@@ -73,7 +73,7 @@ io.on('connection', socket => {
       nome: `Sala de ${nome}`,
       jogadores: [],
       rodada: {
-        numero: 1,
+        numero: 0,
         palavra: '',
         categoria: '',
         dicas: [],
@@ -87,7 +87,12 @@ io.on('connection', socket => {
     salas[salaId].jogadores.push(nomeJogador);
     salas[salaId].ranking[nomeJogador] = { vitorias: 0, tentativas: 0, eliminado: false };
     socket.join(salaId);
-    iniciarNovaRodada(salaId);
+
+    if (salas[salaId].jogadores.length >= 2) {
+      iniciarNovaRodada(salaId);
+    } else {
+      io.to(salaId).emit('mensagem', { nome: 'Sistema', texto: 'Aguardando mais jogadores para começar a rodada.' });
+    }
   });
 
   socket.on('entrarSala', ({ salaId, nome }) => {
@@ -102,7 +107,20 @@ io.on('connection', socket => {
     salas[salaId].jogadores.push(nomeJogador);
     salas[salaId].ranking[nomeJogador] = { vitorias: 0, tentativas: 0, eliminado: false };
     socket.join(salaId);
+
     atualizarRanking(salaId);
+
+    const rodadaAtual = salas[salaId].rodada;
+    if (rodadaAtual.palavra) {
+      io.to(socket.id).emit('novaRodada', {
+        rodada: rodadaAtual.numero,
+        categoria: rodadaAtual.categoria
+      });
+    }
+
+    if (salas[salaId].jogadores.length === 2 && rodadaAtual.numero === 0) {
+      iniciarNovaRodada(salaId);
+    }
   });
 
   socket.on('enviarMensagem', texto => {
@@ -115,6 +133,7 @@ io.on('connection', socket => {
       salas[salaAtual].ranking[nomeJogador].eliminado = true;
       io.to(socket.id).emit('eliminado', 'Você foi eliminado por dizer a palavra maldita no chat!');
       atualizarRanking(salaAtual);
+      checarFimDaRodada(salaAtual);
       return;
     }
 
@@ -126,20 +145,24 @@ io.on('connection', socket => {
     const sala = salas[salaAtual];
     const rodada = sala.rodada;
     const jogador = sala.ranking[nomeJogador];
-
     if (jogador.eliminado) return;
 
     jogador.tentativas += 1;
+    const tentativaLower = tentativa.toLowerCase();
+    const palavraLower = rodada.palavra.toLowerCase();
 
-    if (tentativa.toLowerCase() === rodada.palavra.toLowerCase()) {
+    if (tentativaLower === palavraLower) {
       jogador.vitorias += 1;
       io.to(salaAtual).emit('mensagem', {
         nome: 'Sistema',
         texto: `${nomeJogador} acertou a palavra e venceu a rodada!`
       });
-      iniciarNovaRodada(salaAtual);
+      verificarVencedorOuNovaRodada(salaAtual);
     } else {
-      if (tentativa.toLowerCase().includes(rodada.palavra.slice(0, 3))) {
+      if (
+        tentativaLower.length >= 3 &&
+        (palavraLower.startsWith(tentativaLower) || palavraLower.includes(tentativaLower))
+      ) {
         io.to(socket.id).emit('mensagemPrivada', 'Você chegou perto!');
       }
 
@@ -147,7 +170,9 @@ io.on('connection', socket => {
         jogador.eliminado = true;
         io.to(socket.id).emit('eliminado', 'Você foi eliminado após 3 tentativas erradas.');
       }
+
       atualizarRanking(salaAtual);
+      checarFimDaRodada(salaAtual);
     }
   });
 
@@ -162,6 +187,11 @@ io.on('connection', socket => {
 
   function iniciarNovaRodada(salaId) {
     const sala = salas[salaId];
+    if (sala.jogadores.length < 2) {
+      io.to(salaId).emit('mensagem', { nome: 'Sistema', texto: 'Aguardando mais jogadores para começar a rodada.' });
+      return;
+    }
+
     const { palavra, categoria } = escolherPalavraAleatoria();
     sala.rodada = {
       numero: sala.rodada.numero + 1,
@@ -179,26 +209,54 @@ io.on('connection', socket => {
 
     io.to(salaId).emit('novaRodada', {
       rodada: sala.rodada.numero,
-      categoria: categoria,
-      dicas: []
+      categoria
     });
 
     atualizarRanking(salaId);
   }
 
+  function checarFimDaRodada(salaId) {
+    const sala = salas[salaId];
+    const jogadores = Object.values(sala.ranking);
+    const ativos = jogadores.filter(j => !j.eliminado);
+    if (ativos.length === 0) {
+      io.to(salaId).emit('mensagem', { nome: 'Sistema', texto: 'Todos os jogadores foram eliminados!' });
+      verificarVencedorOuNovaRodada(salaId);
+    }
+  }
+
+  function verificarVencedorOuNovaRodada(salaId) {
+    const sala = salas[salaId];
+    const vencedor = Object.entries(sala.ranking).find(([_, j]) => j.vitorias >= 3);
+    if (vencedor) {
+      io.to(salaId).emit('mensagem', {
+        nome: 'Sistema',
+        texto: `🏆 ${vencedor[0]} venceu o jogo com 3 vitórias! O jogo será reiniciado em 5 segundos.`
+      });
+
+      setTimeout(() => {
+        for (const j of Object.keys(sala.ranking)) {
+          sala.ranking[j] = { vitorias: 0, tentativas: 0, eliminado: false };
+        }
+        sala.rodada.numero = 0;
+        iniciarNovaRodada(salaId);
+      }, 5000);
+    } else {
+      setTimeout(() => iniciarNovaRodada(salaId), 3000);
+    }
+  }
+
   function revelarDica(salaId) {
     const sala = salas[salaId];
     const rodada = sala.rodada;
-    const dicas = rodada.dicas;
-    const reveladas = rodada.reveladas;
 
-    const msgCount = rodada.mensagens;
-    const maxDicas = dicas.length;
-
-    if (msgCount <= maxDicas && !reveladas.includes(msgCount - 1)) {
-      const nova = dicas[msgCount - 1];
-      reveladas.push(msgCount - 1);
-      io.to(salaId).emit('novaDica', nova);
+    if (rodada.mensagens % 5 === 0) {
+      const index = rodada.reveladas.length;
+      if (index < rodada.dicas.length) {
+        const nova = rodada.dicas[index];
+        rodada.reveladas.push(nova);
+        io.to(salaId).emit('novaDica', nova);
+      }
     }
   }
 
